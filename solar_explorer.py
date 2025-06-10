@@ -215,8 +215,12 @@ def load_meter_data():
     
     return df
 
-# Create tabs for equipment types
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["PV Modules", "Grid Support Inverter List", "Energy Storage Systems", "Batteries", "Meters"])
+# Create main tabs for California CEC and Approved Vendor List
+main_tab1, main_tab2 = st.tabs(["California CEC", "Approved Vendor List"])
+
+# California CEC Tab with subtabs for equipment types
+with main_tab1:
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["PV Modules", "Grid Support Inverter List", "Energy Storage Systems", "Batteries", "Meters"])
 
 # Function to run the appropriate downloader script based on equipment type
 def run_downloader(equipment_type):
@@ -872,6 +876,21 @@ with tab4:
 with tab5:
     # Add comparison section for Meters
     display_comparison(filtered_df_meter, "Meters", 'meter_id')
+
+# Approved Vendor List Tab
+with main_tab2:
+    st.header("Approved Vendor List")
+    st.info("This section will contain approved vendor information. Subtabs will be added in future updates.")
+    
+    # Placeholder content for now
+    st.markdown("""
+    ### Coming Soon
+    This tab will contain:
+    - Approved vendor listings
+    - Vendor certifications
+    - Vendor contact information
+    - Additional vendor-specific data
+    """)
 
 # Footer
 st.markdown("---")
