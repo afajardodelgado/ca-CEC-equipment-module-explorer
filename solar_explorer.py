@@ -7,6 +7,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from db.approved_vendor_list import save_approved_vendor_list_data, load_approved_vendor_list_data, delete_approved_vendor_list_item
 
 # Set page configuration
 st.set_page_config(
@@ -877,20 +878,184 @@ with tab5:
     # Add comparison section for Meters
     display_comparison(filtered_df_meter, "Meters", 'meter_id')
 
+# Function to load vendor data
+@st.cache_data
+def load_approved_vendor_list_data_cached():
+    try:
+        df = load_approved_vendor_list_data()
+        return df
+    except Exception as e:
+        st.error(f"Error loading approved vendor list data: {str(e)}")
+        return pd.DataFrame()
+
 # Approved Vendor List Tab
 with main_tab2:
     st.header("Approved Vendor List")
-    st.info("This section will contain approved vendor information. Subtabs will be added in future updates.")
     
-    # Placeholder content for now
-    st.markdown("""
-    ### Coming Soon
-    This tab will contain:
-    - Approved vendor listings
-    - Vendor certifications
-    - Vendor contact information
-    - Additional vendor-specific data
-    """)
+    # Create columns for better layout
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.subheader("Upload Approved Vendor List Data")
+        
+        # Load existing approved vendor list data
+        df_existing_avl = load_approved_vendor_list_data_cached()
+        
+        # File uploader for CSV
+        uploaded_file = st.file_uploader("Upload a CSV file with approved vendor list data", type=["csv"])
+        
+        if uploaded_file is not None:
+            try:
+                # Read the CSV file with error handling for different encodings
+                try:
+                    # First try UTF-8 encoding
+                    df_avl = pd.read_csv(uploaded_file)
+                except UnicodeDecodeError:
+                    # If UTF-8 fails, try with Latin-1 encoding
+                    uploaded_file.seek(0)  # Reset file pointer
+                    df_avl = pd.read_csv(uploaded_file, encoding='latin1')
+                
+                # Display success message
+                st.success(f"Successfully uploaded {uploaded_file.name} with {len(df_avl)} records")
+                
+                # Basic validation of required columns
+                required_columns = [
+                    "Equipment Category", "Manufacturer", "Technology Type", "Model SKU", 
+                    "Product Model Description", "Racking System Name", "Power Rating Specification", 
+                    "Module Level Power Electronics", "System Configuration", "Racking Style", 
+                    "Internal Notes / Memo", "Additional Notes"
+                ]
+                missing_columns = [col for col in required_columns if col not in df_avl.columns]
+                
+                if missing_columns:
+                    st.warning(f"The following standardized columns are missing: {', '.join(missing_columns)}")
+                    st.info("Your CSV should contain all 12 standardized columns for the approved vendor list")
+                
+                # Display the dataframe
+                st.subheader("Uploaded Approved Vendor List Data")
+                st.dataframe(df_avl, use_container_width=True)
+                
+                # Save button for database
+                if st.button("Save to Database"):
+                    try:
+                        records_added = save_approved_vendor_list_data(df_avl)
+                        st.success(f"Successfully saved {records_added} approved vendor list records to the database")
+                        st.session_state['avl_data_saved'] = True
+                        # Clear the cache to reload data
+                        st.cache_data.clear()
+                        # Rerun to refresh the page with new data
+                        st.experimental_rerun()
+                    except Exception as e:
+                        st.error(f"Error saving to database: {str(e)}")
+                
+                # Option to download processed data
+                csv_data = df_avl.to_csv(index=False)
+                st.download_button(
+                    label="Download Processed Data",
+                    data=csv_data,
+                    file_name="processed_approved_vendor_list.csv",
+                    mime="text/csv"
+                )
+                
+            except Exception as e:
+                st.error(f"Error processing the CSV file: {str(e)}")
+                st.info("Please ensure your CSV file is properly formatted")
+        else:
+            # Show existing data from database
+            if not df_existing_avl.empty:
+                st.subheader("Existing Approved Vendor List Data")
+                st.dataframe(df_existing_avl, use_container_width=True)
+                
+                # Option to download existing data
+                csv_data = df_existing_avl.to_csv(index=False)
+                st.download_button(
+                    label="Download Existing Data",
+                    data=csv_data,
+                    file_name="approved_vendor_list_database.csv",
+                    mime="text/csv"
+                )
+            else:
+                st.info("Upload a CSV file to see approved vendor list data here.")
+                st.markdown("""
+                ### Standardized CSV Format
+                Your CSV must include the following 12 standardized columns:
+                - Equipment Category
+                - Manufacturer
+                - Technology Type
+                - Model SKU
+                - Product Model Description
+                - Racking System Name
+                - Power Rating Specification
+                - Module Level Power Electronics
+                - System Configuration
+                - Racking Style
+                - Internal Notes / Memo
+                - Additional Notes
+                """)
+                
+                # Add a button to download the sample CSV template
+                try:
+                    with open('sample_approved_vendor_list.csv', 'r', encoding='utf-8') as f:
+                        sample_csv = f.read()
+                        
+                    st.download_button(
+                        label="Download Sample CSV Template",
+                        data=sample_csv,
+                        file_name="sample_approved_vendor_list.csv",
+                        mime="text/csv"
+                    )
+                except Exception as e:
+                    st.error(f"Error loading sample template: {str(e)}")
+                    st.info("You can still upload your own CSV file with approved vendor list data.")
+    
+    with col2:
+        st.subheader("Approved Vendor List Information")
+        st.info("This section contains approved vendor statistics.")
+        
+        # Approved vendor list statistics from database
+        if not df_existing_avl.empty:
+            # Count of items in approved vendor list
+            st.metric("Total Items", len(df_existing_avl))
+            
+            # Count unique equipment categories
+            if "Equipment Category" in df_existing_avl.columns:
+                unique_categories = df_existing_avl["Equipment Category"].nunique()
+                st.metric("Equipment Categories", unique_categories)
+            
+            # Most common manufacturer if the column exists
+            if "Manufacturer" in df_existing_avl.columns and len(df_existing_avl) > 0:
+                # Handle potential NaN values
+                valid_manufacturers = df_existing_avl["Manufacturer"].dropna()
+                if not valid_manufacturers.empty:
+                    most_common = valid_manufacturers.value_counts().idxmax()
+                    st.metric("Top Manufacturer", most_common)
+            
+            # Most common technology type
+            if "Technology Type" in df_existing_avl.columns and len(df_existing_avl) > 0:
+                valid_types = df_existing_avl["Technology Type"].dropna()
+                if not valid_types.empty:
+                    most_common_tech = valid_types.value_counts().idxmax()
+                    st.metric("Top Technology", most_common_tech)
+        else:
+            st.markdown("""
+            ### Approved Vendor List Statistics
+            Upload and save approved vendor list data to see statistics here.
+            
+            You'll be able to:
+            - Track total approved vendors
+            - View certification statistics
+            - Analyze vendor distribution
+            """)
+            
+        # Future features section
+        st.markdown("---")
+        st.markdown("### Coming Soon")
+        st.markdown("""
+        - Vendor certification verification
+        - Automatic data validation
+        - Vendor performance metrics
+        - Integration with certification authorities
+        """)
 
 # Footer
 st.markdown("---")

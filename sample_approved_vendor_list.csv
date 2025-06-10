@@ -1,0 +1,6 @@
+Equipment Category,Manufacturer,Technology Type,Model SKU,Product Model Description,Racking System Name,Power Rating Specification,Module Level Power Electronics,System Configuration,Racking Style,Internal Notes / Memo,Additional Notes
+Solar Panels,Acme Solar,Monocrystalline,AS-M400,400W High Efficiency Solar Panel,N/A,400W,Optimizers,Residential,Roof Mount,Premium tier product,Tier 1 manufacturer
+Solar Panels,SunPower,Bifacial,SP-B450,450W Bifacial Solar Panel,N/A,450W,Microinverters,Commercial,Ground Mount,High performance in low light,25-year warranty
+Racking,GreenMount,Aluminum,GM-R100,Standard Roof Mount System,SolarGrip Pro,N/A,Compatible,Residential,Pitched Roof,Easy installation,Includes flashing
+Inverters,PowerConvert,String Inverter,PC-S10K,10kW Three-Phase String Inverter,N/A,10kW,N/A,Commercial,N/A,High efficiency,WiFi monitoring included
+Batteries,StorageTech,Lithium Ion,ST-B10,10kWh Home Battery System,N/A,10kWh/5kW,Compatible,Residential,Wall Mount,Expandable system,Includes BMS
