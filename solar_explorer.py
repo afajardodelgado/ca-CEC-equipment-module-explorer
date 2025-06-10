@@ -8,6 +8,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from db.approved_vendor_list import save_approved_vendor_list_data, load_approved_vendor_list_data, delete_approved_vendor_list_item
+from utils.column_mapper import render_column_mapping_interface, STANDARD_COLUMNS
 
 # Set page configuration
 st.set_page_config(
@@ -892,6 +893,16 @@ def load_approved_vendor_list_data_cached():
 with main_tab2:
     st.header("Approved Vendor List")
     
+    # Initialize session state for approved vendor list data if not exists
+    if 'avl_data' not in st.session_state:
+        st.session_state.avl_data = None
+    if 'raw_csv_data' not in st.session_state:
+        st.session_state.raw_csv_data = None
+    if 'mapping_step' not in st.session_state:
+        st.session_state.mapping_step = False
+    if 'mapped_df' not in st.session_state:
+        st.session_state.mapped_df = None
+    
     # Create columns for better layout
     col1, col2 = st.columns([2, 1])
     
@@ -909,54 +920,96 @@ with main_tab2:
                 # Read the CSV file with error handling for different encodings
                 try:
                     # First try UTF-8 encoding
-                    df_avl = pd.read_csv(uploaded_file)
+                    raw_df = pd.read_csv(uploaded_file)
                 except UnicodeDecodeError:
                     # If UTF-8 fails, try with Latin-1 encoding
                     uploaded_file.seek(0)  # Reset file pointer
-                    df_avl = pd.read_csv(uploaded_file, encoding='latin1')
+                    raw_df = pd.read_csv(uploaded_file, encoding='latin1')
                 
                 # Display success message
-                st.success(f"Successfully uploaded {uploaded_file.name} with {len(df_avl)} records")
+                st.success(f"Successfully uploaded {uploaded_file.name} with {len(raw_df)} records")
                 
-                # Basic validation of required columns
-                required_columns = [
-                    "Equipment Category", "Manufacturer", "Technology Type", "Model SKU", 
-                    "Product Model Description", "Racking System Name", "Power Rating Specification", 
-                    "Module Level Power Electronics", "System Configuration", "Racking Style", 
-                    "Internal Notes / Memo", "Additional Notes"
-                ]
-                missing_columns = [col for col in required_columns if col not in df_avl.columns]
+                # Store raw data in session state for mapping
+                st.session_state.raw_csv_data = raw_df
+                
+                # Check if the CSV already has the standard columns
+                missing_columns = [col for col in STANDARD_COLUMNS if col not in raw_df.columns]
                 
                 if missing_columns:
-                    st.warning(f"The following standardized columns are missing: {', '.join(missing_columns)}")
-                    st.info("Your CSV should contain all 12 standardized columns for the approved vendor list")
-                
-                # Display the dataframe
-                st.subheader("Uploaded Approved Vendor List Data")
-                st.dataframe(df_avl, use_container_width=True)
-                
-                # Save button for database
-                if st.button("Save to Database"):
-                    try:
-                        records_added = save_approved_vendor_list_data(df_avl)
-                        st.success(f"Successfully saved {records_added} approved vendor list records to the database")
-                        st.session_state['avl_data_saved'] = True
-                        # Clear the cache to reload data
-                        st.cache_data.clear()
-                        # Rerun to refresh the page with new data
-                        st.experimental_rerun()
-                    except Exception as e:
-                        st.error(f"Error saving to database: {str(e)}")
-                
-                # Option to download processed data
-                csv_data = df_avl.to_csv(index=False)
-                st.download_button(
-                    label="Download Processed Data",
-                    data=csv_data,
-                    file_name="processed_approved_vendor_list.csv",
-                    mime="text/csv"
-                )
-                
+                    st.warning(f"Your CSV is missing {len(missing_columns)} standardized columns. You'll need to map your columns.")
+                    
+                    # Show column mapping button
+                    if st.button("Map Columns Now") or st.session_state.mapping_step:
+                        st.session_state.mapping_step = True
+                        
+                        # Render the column mapping interface
+                        mapping_complete = render_column_mapping_interface(raw_df)
+                        
+                        if mapping_complete and 'mapped_df' in st.session_state:
+                            # Use the mapped DataFrame
+                            df_avl = st.session_state.mapped_df
+                            st.success("Column mapping complete! You can now save the mapped data.")
+                            
+                            # Display the mapped dataframe
+                            st.subheader("Mapped Approved Vendor List Data")
+                            st.dataframe(df_avl, use_container_width=True)
+                            
+                            # Store in session state
+                            st.session_state.avl_data = df_avl
+                            
+                            # Add a download button for the mapped data
+                            csv = df_avl.to_csv(index=False)
+                            st.download_button(
+                                label="Download Mapped Data",
+                                data=csv,
+                                file_name="mapped_approved_vendor_list.csv",
+                                mime="text/csv"
+                            )
+                            
+                            # Add a button to save to database
+                            if st.button("Save Mapped Data to Database"):
+                                try:
+                                    num_saved = save_approved_vendor_list_data(df_avl)
+                                    st.success(f"Successfully saved {num_saved} approved vendor list records to database")
+                                    
+                                    # Reload from database to refresh the display
+                                    st.session_state.mapping_step = False  # Reset mapping step
+                                    st.cache_data.clear()  # Clear the cache to reload data
+                                    st.experimental_rerun()  # Rerun to refresh the UI
+                                except Exception as e:
+                                    st.error(f"Error saving to database: {str(e)}")
+                else:
+                    # CSV already has standard columns
+                    df_avl = raw_df
+                    
+                    # Display the dataframe
+                    st.subheader("Uploaded Approved Vendor List Data")
+                    st.dataframe(df_avl, use_container_width=True)
+                    
+                    # Store in session state
+                    st.session_state.avl_data = df_avl
+                    
+                    # Option to download processed data
+                    csv_data = df_avl.to_csv(index=False)
+                    st.download_button(
+                        label="Download Processed Data",
+                        data=csv_data,
+                        file_name="processed_approved_vendor_list.csv",
+                        mime="text/csv"
+                    )
+                    
+                    # Add a button to save to database
+                    if st.button("Save to Database"):
+                        try:
+                            records_added = save_approved_vendor_list_data(df_avl)
+                            st.success(f"Successfully saved {records_added} approved vendor list records to the database")
+                            st.session_state['avl_data_saved'] = True
+                            # Clear the cache to reload data
+                            st.cache_data.clear()
+                            # Rerun to refresh the page with new data
+                            st.experimental_rerun()
+                        except Exception as e:
+                            st.error(f"Error saving to database: {str(e)}")
             except Exception as e:
                 st.error(f"Error processing the CSV file: {str(e)}")
                 st.info("Please ensure your CSV file is properly formatted")
@@ -991,6 +1044,8 @@ with main_tab2:
                 - Racking Style
                 - Internal Notes / Memo
                 - Additional Notes
+                
+                Don't worry if your CSV has different column names - you can use our column mapping tool to map your columns to the standardized format.
                 """)
                 
                 # Add a button to download the sample CSV template
@@ -1004,13 +1059,15 @@ with main_tab2:
                         file_name="sample_approved_vendor_list.csv",
                         mime="text/csv"
                     )
+                    
+                    st.info("If your CSV has different column names, don't worry! Our column mapping tool will help you map your columns to the standardized format.")
                 except Exception as e:
                     st.error(f"Error loading sample template: {str(e)}")
                     st.info("You can still upload your own CSV file with approved vendor list data.")
     
     with col2:
         st.subheader("Approved Vendor List Information")
-        st.info("This section contains approved vendor statistics.")
+        st.info("This section contains approved vendor statistics and information about the column mapping feature.")
         
         # Approved vendor list statistics from database
         if not df_existing_avl.empty:
@@ -1042,9 +1099,16 @@ with main_tab2:
             Upload and save approved vendor list data to see statistics here.
             
             You'll be able to:
-            - Track total approved vendors
-            - View certification statistics
-            - Analyze vendor distribution
+            - Track total approved items
+            - See distribution by equipment category
+            - Monitor top manufacturers and technologies
+            
+            ### New Column Mapping Feature
+            Our new column mapping tool allows you to:
+            - Map your CSV columns to standardized columns
+            - Preview sample data from each column
+            - Validate your mapping before saving
+            - Export properly formatted data
             """)
             
         # Future features section

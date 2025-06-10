@@ -173,3 +173,14 @@ def delete_approved_vendor_list_item(item_id):
         cursor.execute("DELETE FROM approved_vendor_list WHERE item_id = ?", (item_id,))
         conn.commit()
         return cursor.rowcount > 0
+
+def drop_approved_vendor_list_data():
+    """Drop all data from the approved_vendor_list table"""
+    with sqlite3.connect(get_db_path()) as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM approved_vendor_list")
+        conn.commit()
+        # Reset the auto-increment counter
+        cursor.execute("DELETE FROM sqlite_sequence WHERE name='approved_vendor_list'")
+        conn.commit()
+        return cursor.rowcount
