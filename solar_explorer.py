@@ -872,71 +872,7 @@ with main_tab2:
                     st.error(f"Error loading sample template: {str(e)}")
                     st.info("You can still upload your own CSV file with approved vendor list data.")
     
-    with col2:
-        st.subheader("Approved Vendor List Information")
-        st.info("This section contains approved vendor statistics and information about the equipment categories.")
-        
-        # Approved vendor list statistics from database
-        if not df_existing_avl.empty:
-            # Count of items in approved vendor list
-            st.metric("Total Items", len(df_existing_avl))
-            
-            # Count unique equipment categories
-            if "Equipment Category" in df_existing_avl.columns:
-                unique_categories = df_existing_avl["Equipment Category"].nunique()
-                st.metric("Equipment Categories", unique_categories)
-                
-                # Show distribution of equipment categories
-                st.subheader("Equipment Category Distribution")
-                category_counts = df_existing_avl["Equipment Category"].value_counts()
-                if not category_counts.empty:
-                    # Display category counts as text instead of chart
-                    for category, count in category_counts.items():
-                        st.write(f"**{category}**: {count} items")
-            
-            # Most common manufacturer if the column exists
-            if "Manufacturer" in df_existing_avl.columns and len(df_existing_avl) > 0:
-                # Handle potential NaN values
-                valid_manufacturers = df_existing_avl["Manufacturer"].dropna()
-                if not valid_manufacturers.empty:
-                    most_common = valid_manufacturers.value_counts().idxmax()
-                    st.metric("Top Manufacturer", most_common)
-            
-            # Most common technology type
-            if "Technology Type" in df_existing_avl.columns and len(df_existing_avl) > 0:
-                valid_types = df_existing_avl["Technology Type"].dropna()
-                if not valid_types.empty:
-                    most_common_tech = valid_types.value_counts().idxmax()
-                    st.metric("Top Technology", most_common_tech)
-        else:
-            st.markdown("""
-            ### Equipment Categories
-            The AVL system supports the following equipment categories:
-            
-            - **PV Module**: Solar photovoltaic modules
-            - **PV Module + Inverter**: Integrated PV and inverter systems
-            - **Inverter**: Grid-tie and battery inverters
-            - **Optimizer**: Power optimizers and DC-DC converters
-            - **Battery**: Energy storage batteries
-            - **Battery Expansion**: Battery expansion modules
-            - **Non-Steel Roof Racking**: Specialized racking systems
-            
-            ### New Features
-            - **Category Filtering**: Each tab shows only relevant equipment
-            - **Category Statistics**: View manufacturer and technology distributions
-            - **Export by Category**: Download filtered data for each equipment type
-            - **Equipment Comparison**: Compare specifications across different equipment
-            """)
-            
-        # Future features section
-        st.markdown("---")
-        st.markdown("### Coming Soon")
-        st.markdown("""
-        - Advanced filtering by manufacturer and technology
-        - Certification status tracking
-        - Performance analytics by category
-        - Integration with installer networks
-        """)
+    # Column 2 is now empty - we've removed the Approved Vendor List Information section
 
 # Footer
 st.markdown("---")
