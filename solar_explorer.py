@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-import plotly.express as px
 import subprocess
 import os
 import sys
@@ -467,6 +466,31 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
     
     return filtered_df
 
+# Function to display equipment comparison
+def display_equipment_comparison(filtered_df, equipment_type, id_column):
+    st.subheader(f"{equipment_type} Comparison")
+    st.markdown(f"Select {equipment_type.lower()} to compare their specifications side by side.")
+    
+    # Get list of equipment
+    equipment_list = filtered_df[id_column].tolist()
+    if len(equipment_list) > 1:
+        selected_equipment = st.multiselect(
+            f"Select {equipment_type.lower()} to compare",
+            equipment_list,
+            max_selections=3,
+            key=f"compare_{equipment_type}"
+        )
+        
+        if selected_equipment:
+            comparison_df = filtered_df[filtered_df[id_column].isin(selected_equipment)]
+            
+            # Transpose the dataframe for side-by-side comparison
+            comparison_df = comparison_df.set_index(id_column).T
+            
+            st.dataframe(comparison_df, use_container_width=True)
+    else:
+        st.info(f"Apply filters to see more {equipment_type.lower()} for comparison.")
+
 # Create main tabs for California CEC and Approved Vendor List
 main_tab1, main_tab2 = st.tabs(["California CEC", "Approved Vendor List"])
 
@@ -488,6 +512,7 @@ with tab1:
             'PTC Efficiency (%)',
             'Power Rating (W)'
         )
+        display_equipment_comparison(filtered_df_pv, "PV Modules", 'module_id')
 
 # Grid Support Inverter List Tab
 with tab2:
@@ -504,6 +529,7 @@ with tab2:
                 'CEC Weighted Efficiency (%)',
                 'Rated Output Power at Unity Power Factor ((kW))'
             )
+            display_equipment_comparison(filtered_df_inv, "Grid Support Inverter List", 'inverter_id')
         except Exception as e:
             st.error(f"Error loading inverter data: {e}")
 
@@ -522,6 +548,7 @@ with tab3:
                 'Round Trip Efficiency (%)',
                 'Maximum Discharge Rate (kW)'
             )
+            display_equipment_comparison(filtered_df_storage, "Energy Storage Systems", 'storage_id')
         except Exception as e:
             st.error(f"Error loading energy storage data: {e}")
             st.info("To download Energy Storage Systems data, click the refresh button in the top right corner.")
@@ -547,6 +574,7 @@ with tab4:
                 'Round Trip Efficiency (%)',
                 'Discharge Rate (kW)'
             )
+            display_equipment_comparison(filtered_df_battery, "Batteries", 'battery_id')
         except Exception as e:
             st.error(f"Error loading battery data: {e}")
             st.info("To download Batteries data, click the refresh button in the top right corner.")
@@ -572,6 +600,7 @@ with tab5:
                 'Display Type',
                 'PBI Meter'
             )
+            display_equipment_comparison(filtered_df_meter, "Meters", 'meter_id')
         except Exception as e:
             st.error(f"Error loading meter data: {e}")
             st.info("To download Meters data, click the refresh button in the top right corner.")
@@ -581,299 +610,6 @@ with tab5:
                 success = run_downloader("Meters")
                 if success:
                     st.experimental_rerun()
-
-# Add visualization section to each tab
-def display_visualizations(filtered_df, equipment_type, manufacturer_column, efficiency_column, power_column):
-    st.subheader("Data Visualization")
-    # Add a unique key for each selectbox based on equipment_type
-    chart_type = st.selectbox(
-        "Select chart type",
-        ["Manufacturer Distribution", "Efficiency Comparison", "Power Comparison"],
-        key=f"chart_type_{equipment_type}"
-    )
-    
-    if chart_type == "Manufacturer Distribution":
-        # Group manufacturers by count
-        manufacturer_counts = filtered_df[manufacturer_column].value_counts().reset_index()
-        manufacturer_counts.columns = ['Manufacturer', 'Count']
-        
-        # Calculate percentage
-        total = manufacturer_counts['Count'].sum()
-        manufacturer_counts['Percentage'] = (manufacturer_counts['Count'] / total * 100).round(1)
-        
-        # Keep only top 10 manufacturers, group others
-        top_n = 10
-        if len(manufacturer_counts) > top_n:
-            top_manufacturers = manufacturer_counts.head(top_n).copy()
-            other_count = manufacturer_counts.iloc[top_n:]['Count'].sum()
-            other_percentage = manufacturer_counts.iloc[top_n:]['Percentage'].sum()
-            
-            # Add "Other" category
-            other_row = pd.DataFrame({
-                'Manufacturer': ['Other'],
-                'Count': [other_count],
-                'Percentage': [other_percentage.round(1)]
-            })
-            
-            manufacturer_counts = pd.concat([top_manufacturers, other_row])
-        
-        # Sort by percentage descending
-        manufacturer_counts = manufacturer_counts.sort_values('Percentage', ascending=True)
-        
-        # Create a custom color palette - distinct colors for top categories, gray for "Other"
-        colors = px.colors.qualitative.Bold[:top_n]
-        if len(manufacturer_counts) > top_n:
-            colors.append('#CCCCCC')  # Gray for "Other"
-        
-        # Create horizontal bar chart
-        fig = px.bar(
-            manufacturer_counts,
-            y='Manufacturer',
-            x='Percentage',
-            title=f'Share of {equipment_type} by Manufacturer (%)',
-            color='Manufacturer',
-            color_discrete_sequence=colors,
-            text='Percentage',
-            orientation='h',
-            height=500
-        )
-        
-        # Improve layout
-        fig.update_traces(texttemplate='%{text}%', textposition='outside')
-        fig.update_layout(
-            xaxis_title='Market Share (%)',
-            yaxis_title='Manufacturer',
-            showlegend=False,
-            margin=dict(l=20, r=20, t=40, b=20),
-            xaxis=dict(range=[0, max(manufacturer_counts['Percentage']) * 1.15])  # Add space for labels
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-    
-    elif chart_type == "Efficiency Comparison" and efficiency_column in filtered_df.columns:
-        try:
-            fig = px.box(
-                filtered_df,
-                x=manufacturer_column,
-                y=efficiency_column,
-                title=f'Efficiency Comparison by Manufacturer',
-                color=manufacturer_column,
-                color_discrete_sequence=px.colors.qualitative.Bold,
-                height=500
-            )
-            fig.update_layout(
-                xaxis_title='Manufacturer',
-                yaxis_title='Efficiency (%)',
-                showlegend=False,
-                xaxis={'categoryorder':'total descending'}
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.error(f"Could not create efficiency comparison chart: {e}")
-    
-    elif chart_type == "Power Comparison" and power_column in filtered_df.columns:
-        try:
-            fig = px.box(
-                filtered_df,
-                x=manufacturer_column,
-                y=power_column,
-                title=f'Power Rating Comparison by Manufacturer',
-                color=manufacturer_column,
-                color_discrete_sequence=px.colors.qualitative.Bold,
-                height=500
-            )
-            fig.update_layout(
-                xaxis_title='Manufacturer',
-                yaxis_title='Power Rating',
-                showlegend=False,
-                xaxis={'categoryorder':'total descending'}
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.error(f"Could not create power comparison chart: {e}")
-    
-    # Correlation plots are now a separate visualization type
-
-# Function to display correlation plots as a separate visualization type
-def display_correlation_plots(filtered_df, equipment_type, manufacturer_column):
-    st.subheader("Correlation Analysis")
-    
-    # Select only numeric columns for correlation
-    numeric_cols = filtered_df.select_dtypes(include=['float64', 'int64']).columns.tolist()
-    
-    if len(numeric_cols) >= 2:
-        # Add unique keys for each axis selectbox based on equipment_type
-        x_axis = st.selectbox("X-axis", numeric_cols, index=0, key=f"corr_x_axis_{equipment_type}")
-        y_axis = st.selectbox("Y-axis", numeric_cols, index=min(1, len(numeric_cols)-1), key=f"corr_y_axis_{equipment_type}")
-        
-        fig = px.scatter(
-            filtered_df,
-            x=x_axis,
-            y=y_axis,
-            color=manufacturer_column,
-            title=f'{y_axis} vs {x_axis}',
-            color_discrete_sequence=px.colors.qualitative.Bold,
-            height=500
-        )
-        
-        # Add trendline option
-        add_trendline = st.checkbox("Add trendline", key=f"trendline_{equipment_type}")
-        if add_trendline:
-            fig.update_traces(mode='markers')
-            fig.update_layout(
-                shapes=[
-                    dict(
-                        type='line',
-                        yref='y', xref='x',
-                        x0=filtered_df[x_axis].min(),
-                        y0=filtered_df[y_axis].min(),
-                        x1=filtered_df[x_axis].max(),
-                        y1=filtered_df[y_axis].max(),
-                        line=dict(color='rgba(0,0,0,0.5)', width=2, dash='dash')
-                    )
-                ]
-            )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Add correlation coefficient
-        if add_trendline:
-            corr = filtered_df[[x_axis, y_axis]].corr().iloc[0,1]
-            st.info(f"Correlation coefficient between {x_axis} and {y_axis}: {corr:.3f}")
-    else:
-        st.warning("Not enough numeric columns available for correlation plot.")
-
-# Update the tab content to include visualizations
-with tab1:
-    # Add visualization section for PV Modules
-    display_visualizations(
-        filtered_df_pv,
-        "PV Modules",
-        'Manufacturer',
-        'PTC Efficiency (%)',
-        'Power Rating (W)'
-    )
-    
-    # Add correlation plots section
-    display_correlation_plots(
-        filtered_df_pv,
-        "PV Modules",
-        'Manufacturer'
-    )
-
-with tab2:
-    # Add visualization section for Grid Support Inverter List
-    display_visualizations(
-        filtered_df_inv,
-        "Grid Support Inverter List",
-        'Manufacturer Name',
-        'Weighted Efficiency (%)',
-        'Maximum Continuous Output Power at Unity Power Factor ((kW))'
-    )
-    
-    # Add correlation plots section
-    display_correlation_plots(
-        filtered_df_inv,
-        "Grid Support Inverter List",
-        'Manufacturer Name'
-    )
-
-with tab3:
-    # Add visualization section for Energy Storage Systems
-    display_visualizations(
-        filtered_df_storage,
-        "Energy Storage Systems",
-        'Manufacturer',
-        'Chemistry',
-        'Maximum Discharge Rate (kW)'
-    )
-    
-    # Add correlation plots section
-    display_correlation_plots(
-        filtered_df_storage,
-        "Energy Storage Systems",
-        'Manufacturer'
-    )
-
-with tab4:
-    # Add visualization section for Batteries
-    display_visualizations(
-        filtered_df_battery,
-        "Batteries",
-        'Manufacturer',
-        'Round Trip Efficiency (%)',
-        'Discharge Rate (kW)'
-    )
-    
-    # Add correlation plots section
-    display_correlation_plots(
-        filtered_df_battery,
-        "Batteries",
-        'Manufacturer'
-    )
-
-with tab5:
-    # Add visualization section for Meters
-    display_visualizations(
-        filtered_df_meter,
-        "Meters",
-        'Manufacturer',
-        'Display Type',
-        'PBI Meter'
-    )
-    
-    # Add correlation plots section
-    display_correlation_plots(
-        filtered_df_meter,
-        "Meters",
-        'Manufacturer'
-    )
-
-# Add equipment comparison functionality to each tab
-def display_comparison(filtered_df, equipment_type, id_column):
-    st.subheader(f"{equipment_type} Comparison")
-    st.markdown(f"Select {equipment_type.lower()} to compare their specifications side by side.")
-    
-    # Get list of equipment
-    equipment_list = filtered_df[id_column].tolist()
-    if len(equipment_list) > 1:
-        selected_equipment = st.multiselect(
-            f"Select {equipment_type.lower()} to compare",
-            equipment_list,
-            max_selections=3,
-            key=f"compare_{equipment_type}"
-        )
-        
-        if selected_equipment:
-            comparison_df = filtered_df[filtered_df[id_column].isin(selected_equipment)]
-            
-            # Transpose the dataframe for side-by-side comparison
-            comparison_df = comparison_df.set_index(id_column).T
-            
-            st.dataframe(comparison_df, use_container_width=True)
-    else:
-        st.info(f"Apply filters to see more {equipment_type.lower()} for comparison.")
-
-# Update the tab content to include comparisons
-with tab1:
-    # Add comparison section for PV Modules
-    display_comparison(filtered_df_pv, "PV Modules", 'module_id')
-
-with tab2:
-    # Add comparison section for Grid Support Inverter List
-    display_comparison(filtered_df_inv, "Grid Support Inverter List", 'inverter_id')
-
-with tab3:
-    # Add comparison section for Energy Storage Systems
-    display_comparison(filtered_df_storage, "Energy Storage Systems", 'storage_id')
-
-with tab4:
-    # Add comparison section for Batteries
-    display_comparison(filtered_df_battery, "Batteries", 'battery_id')
-
-with tab5:
-    # Add comparison section for Meters
-    display_comparison(filtered_df_meter, "Meters", 'meter_id')
 
 # Function to load vendor data
 @st.cache_data
@@ -941,21 +677,12 @@ with main_tab2:
                     if "Manufacturer" in filtered_df.columns:
                         unique_manufacturers = filtered_df["Manufacturer"].nunique()
                         st.metric("Manufacturers", unique_manufacturers)
-                
                 with col2:
                     if "Technology Type" in filtered_df.columns:
                         unique_tech_types = filtered_df["Technology Type"].nunique()
                         st.metric("Technology Types", unique_tech_types)
-                
                 with col3:
                     st.metric("Total Items", len(filtered_df))
-                
-                # Show top manufacturers for this category
-                if "Manufacturer" in filtered_df.columns and len(filtered_df) > 0:
-                    st.subheader(f"Top Manufacturers - {category}")
-                    manufacturer_counts = filtered_df["Manufacturer"].value_counts().head(5)
-                    if not manufacturer_counts.empty:
-                        st.bar_chart(manufacturer_counts)
                 
                 # Add separator before CRUD operations
                 st.markdown("---")
@@ -1163,7 +890,9 @@ with main_tab2:
                 st.subheader("Equipment Category Distribution")
                 category_counts = df_existing_avl["Equipment Category"].value_counts()
                 if not category_counts.empty:
-                    st.bar_chart(category_counts)
+                    # Display category counts as text instead of chart
+                    for category, count in category_counts.items():
+                        st.write(f"**{category}**: {count} items")
             
             # Most common manufacturer if the column exists
             if "Manufacturer" in df_existing_avl.columns and len(df_existing_avl) > 0:
@@ -1196,7 +925,7 @@ with main_tab2:
             - **Category Filtering**: Each tab shows only relevant equipment
             - **Category Statistics**: View manufacturer and technology distributions
             - **Export by Category**: Download filtered data for each equipment type
-            - **Visual Analytics**: Charts showing top manufacturers per category
+            - **Equipment Comparison**: Compare specifications across different equipment
             """)
             
         # Future features section
@@ -1204,7 +933,6 @@ with main_tab2:
         st.markdown("### Coming Soon")
         st.markdown("""
         - Advanced filtering by manufacturer and technology
-        - Equipment comparison tools
         - Certification status tracking
         - Performance analytics by category
         - Integration with installer networks
