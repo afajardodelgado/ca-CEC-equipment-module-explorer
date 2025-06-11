@@ -48,7 +48,7 @@ current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 df['Date Added to Tool'] = current_time
 
 # Step 5: Connect to SQLite database (or create it) using context manager
-with sqlite3.connect('inverters.db') as conn:
+with sqlite3.connect('db/inverters.db') as conn:
     cursor = conn.cursor()
 
     # Step 6: Check if the table exists, if not create it with a primary key

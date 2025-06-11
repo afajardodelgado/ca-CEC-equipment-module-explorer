@@ -110,7 +110,7 @@ except Exception as e:
     print("Created minimal DataFrame due to error")
 
 # Step 5: Connect to SQLite database (or create it) using context manager
-with sqlite3.connect('batteries.db') as conn:
+with sqlite3.connect('db/batteries.db') as conn:
     cursor = conn.cursor()
 
     # Step 6: Check if the table exists, if not create it with a primary key
