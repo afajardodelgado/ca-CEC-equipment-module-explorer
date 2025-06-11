@@ -83,6 +83,33 @@ st.markdown("""
         font-weight: bold;
         color: #333;
     }
+    /* Enhanced styling for AVL subtabs */
+    .stTabs [data-baseweb="tab-list"] button[data-baseweb="tab"]:hover {
+        background-color: #f8f9fa;
+        color: #495057;
+        transition: all 0.2s ease;
+    }
+    /* Active AVL subtab with underline */
+    .stTabs [data-baseweb="tab-list"] button[data-baseweb="tab"][aria-selected="true"] {
+        background-color: #ffffff;
+        border-bottom: 2px solid #28a745;
+        color: #28a745;
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    /* AVL subtab styling */
+    .stTabs [data-baseweb="tab-list"] button[data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0;
+        margin-right: 2px;
+        min-width: 140px;
+        font-size: 14px;
+        padding: 12px 20px;
+        border: 1px solid #dee2e6;
+        border-bottom: 2px solid transparent;
+        background-color: #f8f9fa;
+        color: #6c757d;
+        transition: all 0.2s ease;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -474,7 +501,7 @@ with tab2:
                 'Manufacturer Name',
                 'Model Number1',
                 'CEC Weighted Efficiency (%)',
-                'Rated Output Power (kW)'
+                'Rated Output Power at Unity Power Factor ((kW))'
             )
         except Exception as e:
             st.error(f"Error loading inverter data: {e}")
@@ -871,14 +898,100 @@ with main_tab2:
     if 'mapped_df' not in st.session_state:
         st.session_state.mapped_df = None
     
+    # Load existing approved vendor list data
+    df_existing_avl = load_approved_vendor_list_data_cached()
+    
+    # Create equipment category subtabs
+    equipment_categories = [
+        "PV Module", 
+        "PV Module + Inverter", 
+        "Inverter", 
+        "Optimizer", 
+        "Battery", 
+        "Battery Expansion", 
+        "Non-Steel Roof Racking"
+    ]
+    
+    # Create subtabs for equipment categories
+    avl_tabs = st.tabs(equipment_categories)
+    
+    # Function to filter data by equipment category
+    def filter_by_category(df, category):
+        if df.empty:
+            return df
+        if "Equipment Category" in df.columns:
+            return df[df["Equipment Category"].str.contains(category, case=False, na=False)]
+        return pd.DataFrame()
+    
+    # Function to render equipment category tab content
+    def render_equipment_tab(category, tab_container, df_data):
+        with tab_container:
+            st.subheader(f"{category} Equipment")
+            
+            # Filter data for this category
+            filtered_df = filter_by_category(df_data, category)
+            
+            if not filtered_df.empty:
+                st.success(f"Found {len(filtered_df)} {category.lower()} items")
+                
+                # Display filtered data
+                st.dataframe(filtered_df, use_container_width=True)
+                
+                # Download button for filtered data
+                csv_data = filtered_df.to_csv(index=False)
+                st.download_button(
+                    label=f"Download {category} Data",
+                    data=csv_data,
+                    file_name=f"{category.lower().replace(' ', '_')}_equipment.csv",
+                    mime="text/csv"
+                )
+                
+                # Show category statistics
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    if "Manufacturer" in filtered_df.columns:
+                        unique_manufacturers = filtered_df["Manufacturer"].nunique()
+                        st.metric("Manufacturers", unique_manufacturers)
+                
+                with col2:
+                    if "Technology Type" in filtered_df.columns:
+                        unique_tech_types = filtered_df["Technology Type"].nunique()
+                        st.metric("Technology Types", unique_tech_types)
+                
+                with col3:
+                    st.metric("Total Items", len(filtered_df))
+                
+                # Show top manufacturers for this category
+                if "Manufacturer" in filtered_df.columns and len(filtered_df) > 0:
+                    st.subheader(f"Top Manufacturers - {category}")
+                    manufacturer_counts = filtered_df["Manufacturer"].value_counts().head(5)
+                    if not manufacturer_counts.empty:
+                        st.bar_chart(manufacturer_counts)
+                
+            else:
+                st.info(f"No {category.lower()} equipment found in the database.")
+                st.markdown(f"""
+                ### Upload {category} Equipment Data
+                
+                To see {category.lower()} equipment here:
+                1. Use the upload section below to add approved vendor list data
+                2. Ensure your data includes "{category}" in the Equipment Category column
+                3. Save the data to the database
+                """)
+    
+    # Render each equipment category tab
+    for i, category in enumerate(equipment_categories):
+        render_equipment_tab(category, avl_tabs[i], df_existing_avl)
+    
+    # Add separator and upload section
+    st.markdown("---")
+    st.header("Data Management")
+    
     # Create columns for better layout
     col1, col2 = st.columns([2, 1])
     
     with col1:
         st.subheader("Upload Approved Vendor List Data")
-        
-        # Load existing approved vendor list data
-        df_existing_avl = load_approved_vendor_list_data_cached()
         
         # File uploader for CSV
         uploaded_file = st.file_uploader("Upload a CSV file with approved vendor list data", type=["csv"])
@@ -1035,7 +1148,7 @@ with main_tab2:
     
     with col2:
         st.subheader("Approved Vendor List Information")
-        st.info("This section contains approved vendor statistics and information about the column mapping feature.")
+        st.info("This section contains approved vendor statistics and information about the equipment categories.")
         
         # Approved vendor list statistics from database
         if not df_existing_avl.empty:
@@ -1046,6 +1159,12 @@ with main_tab2:
             if "Equipment Category" in df_existing_avl.columns:
                 unique_categories = df_existing_avl["Equipment Category"].nunique()
                 st.metric("Equipment Categories", unique_categories)
+                
+                # Show distribution of equipment categories
+                st.subheader("Equipment Category Distribution")
+                category_counts = df_existing_avl["Equipment Category"].value_counts()
+                if not category_counts.empty:
+                    st.bar_chart(category_counts)
             
             # Most common manufacturer if the column exists
             if "Manufacturer" in df_existing_avl.columns and len(df_existing_avl) > 0:
@@ -1063,30 +1182,33 @@ with main_tab2:
                     st.metric("Top Technology", most_common_tech)
         else:
             st.markdown("""
-            ### Approved Vendor List Statistics
-            Upload and save approved vendor list data to see statistics here.
+            ### Equipment Categories
+            The AVL system supports the following equipment categories:
             
-            You'll be able to:
-            - Track total approved items
-            - See distribution by equipment category
-            - Monitor top manufacturers and technologies
+            - **PV Module**: Solar photovoltaic modules
+            - **PV Module + Inverter**: Integrated PV and inverter systems
+            - **Inverter**: Grid-tie and battery inverters
+            - **Optimizer**: Power optimizers and DC-DC converters
+            - **Battery**: Energy storage batteries
+            - **Battery Expansion**: Battery expansion modules
+            - **Non-Steel Roof Racking**: Specialized racking systems
             
-            ### New Column Mapping Feature
-            Our new column mapping tool allows you to:
-            - Map your CSV columns to standardized columns
-            - Preview sample data from each column
-            - Validate your mapping before saving
-            - Export properly formatted data
+            ### New Features
+            - **Category Filtering**: Each tab shows only relevant equipment
+            - **Category Statistics**: View manufacturer and technology distributions
+            - **Export by Category**: Download filtered data for each equipment type
+            - **Visual Analytics**: Charts showing top manufacturers per category
             """)
             
         # Future features section
         st.markdown("---")
         st.markdown("### Coming Soon")
         st.markdown("""
-        - Vendor certification verification
-        - Automatic data validation
-        - Vendor performance metrics
-        - Integration with certification authorities
+        - Advanced filtering by manufacturer and technology
+        - Equipment comparison tools
+        - Certification status tracking
+        - Performance analytics by category
+        - Integration with installer networks
         """)
 
 # Footer
