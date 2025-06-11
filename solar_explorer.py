@@ -13,13 +13,39 @@ from components.avl_crud import render_avl_crud_interface
 # Set page configuration
 st.set_page_config(
     page_title="Solar Equipment Explorer",
-    page_icon="☀️",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # Custom CSS for a minimalist aesthetic
 st.markdown("""
+<style>
+    /* Stat boxes styling */
+    .stat-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+    .stat-box {
+        background-color: white;
+        border-radius: 5px;
+        padding: 15px;
+        width: 32%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    .stat-label {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 5px;
+    }
+    .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+    }
+</style>
+
 <style>
     .main {
         background-color: #f8f9fa;
@@ -149,7 +175,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Title
-st.title("☀️ Solar Equipment Explorer")
+st.title("Solar Equipment Explorer")
 
 # Define base directory for database files
 BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
@@ -492,7 +518,7 @@ def display_equipment_comparison(filtered_df, equipment_type, id_column):
         st.info(f"Apply filters to see more {equipment_type.lower()} for comparison.")
 
 # Create main tabs for California CEC and Approved Vendor List
-main_tab1, main_tab2 = st.tabs(["California CEC", "Approved Vendor List"])
+main_tab1, main_tab2 = st.tabs(["California CEC", "DCA - Approved Vendor List"])
 
 # California CEC Tab with subtabs for equipment types
 with main_tab1:
@@ -623,11 +649,15 @@ def load_approved_vendor_list_data_cached():
 
 # Approved Vendor List Tab
 with main_tab2:
-    st.header("Approved Vendor List")
+    # Removed redundant header
     
     # Initialize session state for approved vendor list data if not exists
     if 'avl_data' not in st.session_state:
         st.session_state.avl_data = None
+        
+    # Initialize session state for last upload date if not exists
+    if 'last_upload_date' not in st.session_state:
+        st.session_state.last_upload_date = datetime.now().strftime('%Y-%m-%d')
     if 'raw_csv_data' not in st.session_state:
         st.session_state.raw_csv_data = None
     if 'mapping_step' not in st.session_state:
@@ -663,26 +693,37 @@ with main_tab2:
     # Function to render equipment category tab content
     def render_equipment_tab(category, tab_container, df_data):
         with tab_container:
-            st.subheader(f"{category} Equipment")
-            
             # Filter data for this category
             filtered_df = filter_by_category(df_data, category)
             
             if not filtered_df.empty:
-                st.success(f"Found {len(filtered_df)} {category.lower()} items")
+                # Get the last upload date from session state
+                last_upload_date = st.session_state.last_upload_date
                 
-                # Show category statistics
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    if "Manufacturer" in filtered_df.columns:
-                        unique_manufacturers = filtered_df["Manufacturer"].nunique()
-                        st.metric("Manufacturers", unique_manufacturers)
-                with col2:
-                    if "Technology Type" in filtered_df.columns:
-                        unique_tech_types = filtered_df["Technology Type"].nunique()
-                        st.metric("Technology Types", unique_tech_types)
-                with col3:
-                    st.metric("Total Items", len(filtered_df))
+                # Show statistics in the same boxed format as California CEC tab
+                st.markdown("""
+                <div class="stat-container">
+                    <div class="stat-box">
+                        <div class="stat-label">Total Items</div>
+                        <div class="stat-value">{}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Manufacturers</div>
+                        <div class="stat-value">{}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Last Upload Date</div>
+                        <div class="stat-value">{}</div>
+                    </div>
+                </div>
+                """.format(
+                    len(filtered_df), 
+                    filtered_df["Manufacturer"].nunique() if "Manufacturer" in filtered_df.columns else 0,
+                    last_upload_date
+                ), unsafe_allow_html=True)
+                
+                # Add equipment header after the metrics boxes
+                st.subheader(f"{category} Equipment")
                 
                 # Add separator before CRUD operations
                 st.markdown("---")
@@ -779,6 +820,9 @@ with main_tab2:
                                     num_saved = save_approved_vendor_list_data(df_avl)
                                     st.success(f"Successfully saved {num_saved} approved vendor list records to database")
                                     
+                                    # Update last upload date
+                                    st.session_state.last_upload_date = datetime.now().strftime('%Y-%m-%d')
+                                    
                                     # Reload from database to refresh the display
                                     st.session_state.mapping_step = False  # Reset mapping step
                                     st.cache_data.clear()  # Clear the cache to reload data
@@ -811,6 +855,10 @@ with main_tab2:
                             records_added = save_approved_vendor_list_data(df_avl)
                             st.success(f"Successfully saved {records_added} approved vendor list records to the database")
                             st.session_state['avl_data_saved'] = True
+                            
+                            # Update last upload date
+                            st.session_state.last_upload_date = datetime.now().strftime('%Y-%m-%d')
+                            
                             # Clear the cache to reload data
                             st.cache_data.clear()
                             # Rerun to refresh the page with new data
@@ -876,5 +924,4 @@ with main_tab2:
 
 # Footer
 st.markdown("---")
-st.markdown("Data source: California Energy Commission")
-st.markdown(f"Last updated: {datetime.now().strftime('%Y-%m-%d')}")
+st.markdown(f"Last updated: {datetime.now().strftime('%Y-%m-%d')} PST")
