@@ -53,6 +53,12 @@ st.markdown("""
     .stButton button {
         background-color: #343a40;
         color: white;
+        white-space: nowrap;
+        min-width: fit-content;
+        padding: 0.5rem 1rem;
+        display: inline-block;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .stDataFrame {
         padding: 10px;
@@ -163,6 +169,7 @@ st.markdown("""
         justify-content: center;
         min-height: 0;
         box-shadow: none;
+        white-space: nowrap;
     }
     
     /* Hover effect for refresh button */
@@ -170,6 +177,29 @@ st.markdown("""
         background-color: #f0f0f0;
         border-color: #d0d0d0;
         color: #495057;
+    }
+    
+    /* Fix for all form submit buttons and regular buttons */
+    .stButton > button, 
+    [data-testid="stFormSubmitButton"] > button,
+    .stDownloadButton > button {
+        white-space: nowrap !important;
+        min-width: fit-content !important;
+        padding: 0.5rem 1rem !important;
+        display: inline-block !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        line-height: 1.5 !important;
+        height: auto !important;
+    }
+    
+    /* Special styling for circular refresh button */
+    [data-testid="stButton"] button[title*="Download"] {
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        padding: 0 !important;
+        min-width: 28px !important;
     }
 </style>
 """, unsafe_allow_html=True)
