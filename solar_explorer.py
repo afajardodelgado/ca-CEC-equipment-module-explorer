@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from db.approved_vendor_list import save_approved_vendor_list_data, load_approved_vendor_list_data, delete_approved_vendor_list_item
 from utils.column_mapper import render_column_mapping_interface, STANDARD_COLUMNS
+from components.avl_crud import render_avl_crud_interface
 
 # Set page configuration
 st.set_page_config(
@@ -934,18 +935,6 @@ with main_tab2:
             if not filtered_df.empty:
                 st.success(f"Found {len(filtered_df)} {category.lower()} items")
                 
-                # Display filtered data
-                st.dataframe(filtered_df, use_container_width=True)
-                
-                # Download button for filtered data
-                csv_data = filtered_df.to_csv(index=False)
-                st.download_button(
-                    label=f"Download {category} Data",
-                    data=csv_data,
-                    file_name=f"{category.lower().replace(' ', '_')}_equipment.csv",
-                    mime="text/csv"
-                )
-                
                 # Show category statistics
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -968,6 +957,12 @@ with main_tab2:
                     if not manufacturer_counts.empty:
                         st.bar_chart(manufacturer_counts)
                 
+                # Add separator before CRUD operations
+                st.markdown("---")
+                
+                # Render CRUD interface for this category
+                render_avl_crud_interface(category_filter=category)
+                
             else:
                 st.info(f"No {category.lower()} equipment found in the database.")
                 st.markdown(f"""
@@ -978,6 +973,10 @@ with main_tab2:
                 2. Ensure your data includes "{category}" in the Equipment Category column
                 3. Save the data to the database
                 """)
+                
+                # Show CRUD interface even if empty (allows adding new records)
+                st.markdown("---")
+                render_avl_crud_interface(category_filter=category)
     
     # Render each equipment category tab
     for i, category in enumerate(equipment_categories):
