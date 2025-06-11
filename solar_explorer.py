@@ -132,97 +132,58 @@ def get_db_path(db_name):
     return str(BASE_DIR / 'db' / db_name)
 
 
-# Function to load PV module data
+# Function to load equipment data (unified function)
+@st.cache_data
+def load_equipment_data(db_name, table_name, date_columns):
+    """
+    Unified function to load equipment data from any database.
+    
+    Args:
+        db_name: Name of the database file (e.g., 'pv_modules.db')
+        table_name: Name of the table in the database (e.g., 'pv_modules')
+        date_columns: List of date column names to process
+    
+    Returns:
+        DataFrame with processed date columns
+    """
+    with sqlite3.connect(get_db_path(db_name)) as conn:
+        query = f"SELECT * FROM {table_name}"
+        df = pd.read_sql_query(query, conn)
+    
+    # Handle date columns - they're already stored as strings in the database
+    for col in date_columns:
+        if col in df.columns:
+            # Vectorized operation instead of apply
+            mask = df[col].notna() & df[col].astype(str).str.len().gt(10)
+            df.loc[mask, col] = df.loc[mask, col].astype(str).str[:10]
+    
+    return df
+
+# Wrapper functions for each equipment type
 @st.cache_data
 def load_pv_data():
-    with sqlite3.connect(get_db_path('pv_modules.db')) as conn:
-        query = "SELECT * FROM pv_modules"
-        df = pd.read_sql_query(query, conn)
-    
-    # Handle date columns - they're already stored as strings in the database
-    date_columns = ['CEC Listing Date', 'Last Update', 'Date Added to Tool']
-    for col in date_columns:
-        if col in df.columns:
-            # Vectorized operation instead of apply
-            mask = df[col].notna() & df[col].astype(str).str.len().gt(10)
-            df.loc[mask, col] = df.loc[mask, col].astype(str).str[:10]
-    
-    return df
+    return load_equipment_data('pv_modules.db', 'pv_modules', 
+                              ['CEC Listing Date', 'Last Update', 'Date Added to Tool'])
 
-# Function to load inverter data
 @st.cache_data
 def load_inverter_data():
-    with sqlite3.connect(get_db_path('inverters.db')) as conn:
-        query = "SELECT * FROM inverters"
-        df = pd.read_sql_query(query, conn)
-    
-    # Handle date columns - they're already stored as strings in the database
-    date_columns = ['Date Added to Tool', 'Last Update', 'Grid Support Listing Date']
-    for col in date_columns:
-        if col in df.columns:
-            # Vectorized operation instead of apply
-            mask = df[col].notna() & df[col].astype(str).str.len().gt(10)
-            df.loc[mask, col] = df.loc[mask, col].astype(str).str[:10]
-    
-    return df
+    return load_equipment_data('inverters.db', 'inverters', 
+                              ['Date Added to Tool', 'Last Update', 'Grid Support Listing Date'])
 
-# Function to load energy storage data
 @st.cache_data
 def load_energy_storage_data():
-    with sqlite3.connect(get_db_path('energy_storage.db')) as conn:
-        query = "SELECT * FROM energy_storage"
-        df = pd.read_sql_query(query, conn)
-    
-    # Handle date columns - they're already stored as strings in the database
-    date_columns = ['Date Added to Tool', 'Last Update', 'Energy Storage Listing Date', 'Certificate Date']
-    for col in date_columns:
-        if col in df.columns:
-            # Vectorized operation instead of apply
-            mask = df[col].notna() & df[col].astype(str).str.len().gt(10)
-            df.loc[mask, col] = df.loc[mask, col].astype(str).str[:10]
-    
-    return df
+    return load_equipment_data('energy_storage.db', 'energy_storage', 
+                              ['Date Added to Tool', 'Last Update', 'Energy Storage Listing Date', 'Certificate Date'])
 
-# Function to load battery data
 @st.cache_data
 def load_battery_data():
-    with sqlite3.connect(get_db_path('batteries.db')) as conn:
-        query = "SELECT * FROM batteries"
-        df = pd.read_sql_query(query, conn)
-    
-    # Handle date columns - they're already stored as strings in the database
-    date_columns = ['Date Added to Tool', 'Last Update', 'Battery Listing Date', 'Certificate Date']
-    for col in date_columns:
-        if col in df.columns:
-            # Vectorized operation instead of apply
-            mask = df[col].notna() & df[col].astype(str).str.len().gt(10)
-            df.loc[mask, col] = df.loc[mask, col].astype(str).str[:10]
-    
-    return df
+    return load_equipment_data('batteries.db', 'batteries', 
+                              ['Date Added to Tool', 'Last Update', 'Battery Listing Date', 'Certificate Date'])
 
-# Function to load meter data
 @st.cache_data
 def load_meter_data():
-    with sqlite3.connect(get_db_path('meters.db')) as conn:
-        query = "SELECT * FROM meters"
-        df = pd.read_sql_query(query, conn)
-    
-    # Handle date columns - they're already stored as strings in the database
-    date_columns = ['Date Added to Tool', 'Last Update', 'Meter Listing Date']
-    for col in date_columns:
-        if col in df.columns:
-            # Vectorized operation instead of apply
-            mask = df[col].notna() & df[col].astype(str).str.len().gt(10)
-            df.loc[mask, col] = df.loc[mask, col].astype(str).str[:10]
-    
-    return df
-
-# Create main tabs for California CEC and Approved Vendor List
-main_tab1, main_tab2 = st.tabs(["California CEC", "Approved Vendor List"])
-
-# California CEC Tab with subtabs for equipment types
-with main_tab1:
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["PV Modules", "Grid Support Inverter List", "Energy Storage Systems", "Batteries", "Meters"])
+    return load_equipment_data('meters.db', 'meters', 
+                              ['Date Added to Tool', 'Last Update', 'Meter Listing Date'])
 
 # Function to run the appropriate downloader script based on equipment type
 def run_downloader(equipment_type):
@@ -477,6 +438,13 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
         st.dataframe(filtered_df, use_container_width=True)
     
     return filtered_df
+
+# Create main tabs for California CEC and Approved Vendor List
+main_tab1, main_tab2 = st.tabs(["California CEC", "Approved Vendor List"])
+
+# California CEC Tab with subtabs for equipment types
+with main_tab1:
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["PV Modules", "Grid Support Inverter List", "Energy Storage Systems", "Batteries", "Meters"])
 
 # PV Modules Tab
 with tab1:
