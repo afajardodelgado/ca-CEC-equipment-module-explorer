@@ -102,21 +102,25 @@ st.markdown("""
         border-bottom: 1px solid var(--secondary-gray);
         background-color: transparent;
         margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-evenly;
+        width: 100%;
     }
     
-    .stTabs [data-baseweb="tab"] {
-        background-color: transparent;
-        border: none;
-        border-bottom: 2px solid transparent;
-        border-radius: 0;
-        padding: 0.4rem 1rem;
-        margin-right: 0.25rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--secondary-gray);
-        transition: all 0.2s ease;
-        height: auto;
+    button[data-baseweb="tab"], .stTabs [data-baseweb="tab"] {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.5rem;
         min-height: 32px;
+        min-width: 140px;
+        width: 140px;
+        border-radius: 4px 4px 0 0;
+        border-bottom: 2px solid transparent;
+        font-weight: 500;
+        background-color: transparent;
+        color: var(--text-black);
+        transition: all 0.2s ease;
+        text-align: center;
+        flex: 1 0 auto;
     }
     
     .stTabs [data-baseweb="tab"]:hover {
@@ -535,30 +539,42 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
     elif equipment_type == "Meters":
         date_label = "Latest Meter Listing Date"
     
-    st.markdown("""
-    <div class="stat-container">
-        <div class="stat-box">
-            <div class="stat-label">Total Items</div>
-            <div class="stat-value">{}</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">Manufacturers</div>
-            <div class="stat-value">{}</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">{}</div>
-            <div class="stat-value">{}</div>
-        </div>
-    </div>
-    """.format(
-        len(df), 
-        df[manufacturer_column].nunique(),
-        date_label,
-        latest_listing_date
-    ), unsafe_allow_html=True)
+    # Create a container for stats and refresh button
+    stats_container = st.container()
     
-    # Display filtered data
-    st.subheader(f"{equipment_type}")
+    # Create columns for stats and refresh button
+    col1, col2 = stats_container.columns([0.97, 0.03])
+    
+    with col1:
+        st.markdown("""
+        <div class="stat-container">
+            <div class="stat-box">
+                <div class="stat-label">Total Items</div>
+                <div class="stat-value">{}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Manufacturers</div>
+                <div class="stat-value">{}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">{}</div>
+                <div class="stat-value">{}</div>
+            </div>
+        </div>
+        """.format(
+            len(df), 
+            df[manufacturer_column].nunique(),
+            date_label,
+            latest_listing_date
+        ), unsafe_allow_html=True)
+    
+    with col2:
+        # Add refresh button aligned with the Latest Listing Date box
+        st.markdown("<div style='margin-top: 45px;'></div>", unsafe_allow_html=True)
+        if st.button("⟳", key=f"refresh_button_{equipment_type}", help="Download latest data and refresh"):
+            # Set downloading state
+            st.session_state[f"downloading_{equipment_type}"] = True
+            st.rerun()
     
     # Create a row with two columns - one for filters on the left and search on the right
     filter_col, search_col = st.columns([1, 1])
@@ -617,11 +633,7 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
                     st.error(f"Search error: {e}. Showing all items instead.")
                     # Keep df as is if there's an error
         
-    # Add a simple refresh button aligned far left
-    if st.button("⟳", key=f"refresh_button_{equipment_type}", help="Download latest data and refresh"):
-        # Set downloading state
-        st.session_state[f"downloading_{equipment_type}"] = True
-        st.rerun()
+    # Refresh button has been moved to align with the Latest Listing Date box
     
     # Show downloading spinner below refresh button if downloading
     if st.session_state.get(f"downloading_{equipment_type}", False):
@@ -634,8 +646,6 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
                 # Clear cache and reload the app
                 st.cache_data.clear()
                 st.rerun()
-    
-    st.write(f"Showing {len(df)} items")
     
     # Apply filters
     filtered_df = df.copy()
@@ -920,9 +930,6 @@ with main_tab2:
                     last_upload_date
                 ), unsafe_allow_html=True)
                 
-                # Add equipment header after the metrics boxes
-                st.subheader(f"{category} Equipment")
-                
                 # Add separator before CRUD operations
                 st.markdown("---")
                 
@@ -950,7 +957,6 @@ with main_tab2:
     
     # Add separator and upload section
     st.markdown("---")
-    st.header("Data Management")
     
     # Create columns for better layout
     col1, col2 = st.columns([2, 1])

@@ -166,7 +166,6 @@ def render_avl_crud_interface(category_filter=None):
     df = df.rename(columns=column_display_names)
     
     # CRUD Operations Section
-    st.subheader("Data Management")
     
     # Operation tabs
     crud_tabs = st.tabs(["View & Edit", "Add New", "Bulk Operations"])
@@ -182,7 +181,8 @@ def render_avl_crud_interface(category_filter=None):
         else:
             filtered_df = df
         
-        st.info(f"Showing {len(filtered_df)} of {len(df)} records")
+        # Replace blue info box with subtle text
+        st.markdown(f"<span style='color: var(--secondary-gray); font-size: 0.8rem;'>{len(filtered_df)} of {len(df)} records</span>", unsafe_allow_html=True)
         
         # Display records with selection
         if st.checkbox("Enable selection for bulk operations", key=f"enable_selection_{key_suffix}"):
@@ -304,7 +304,7 @@ def render_avl_crud_interface(category_filter=None):
         st.markdown("### Bulk Operations")
         
         if st.session_state[f'selected_records_{key_suffix}']:
-            st.info(f"You have {len(st.session_state[f'selected_records_{key_suffix}'])} records selected")
+            st.markdown(f"<span style='color: var(--secondary-gray); font-size: 0.8rem;'>{len(st.session_state[f'selected_records_{key_suffix}'])} records selected</span>", unsafe_allow_html=True)
             
             operation = st.selectbox(
                 "Select bulk operation",
@@ -344,7 +344,7 @@ def render_avl_crud_interface(category_filter=None):
                     st.session_state[f'selected_records_{key_suffix}'] = []
                     st.rerun()
         else:
-            st.info("Select records from the 'View & Edit' tab to perform bulk operations")
+            st.markdown("<span style='color: var(--secondary-gray); font-size: 0.8rem;'>Select records from the 'View & Edit' tab to perform bulk operations</span>", unsafe_allow_html=True)
     
     # Save/Export Section
     st.markdown("---")
