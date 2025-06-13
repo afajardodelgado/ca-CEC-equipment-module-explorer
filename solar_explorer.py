@@ -21,185 +21,353 @@ st.set_page_config(
 # Custom CSS for a minimalist aesthetic
 st.markdown("""
 <style>
-    /* Stat boxes styling */
-    .stat-container {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 20px;
+    /* Typography - Clean, modern sans-serif */
+    * {
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
     }
-    .stat-box {
-        background-color: white;
-        border-radius: 5px;
-        padding: 15px;
-        width: 32%;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        text-align: center;
+    
+    /* Color Variables */
+    :root {
+        --bg-cream: #FFFFF8;
+        --primary-green: #2A623C;
+        --secondary-gray: #80807C;
+        --text-black: #000000;
+        --white: #FFFFFF;
     }
-    .stat-label {
-        font-size: 14px;
-        color: #666;
-        margin-bottom: 5px;
-    }
-    .stat-value {
-        font-size: 24px;
-        font-weight: bold;
-    }
-</style>
-
-<style>
+    
+    /* Main Layout - More compact spacing */
     .main {
-        background-color: #f8f9fa;
+        background-color: var(--bg-cream);
+        padding: 1.2rem 2rem;
     }
-    .stButton button {
-        background-color: #343a40;
-        color: white;
-        white-space: nowrap;
-        min-width: fit-content;
-        padding: 0.5rem 1rem;
-        display: inline-block;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .stDataFrame {
-        padding: 10px;
-    }
-    h1, h2, h3 {
-        color: #343a40;
-    }
-    .stSidebar {
-        background-color: #f8f9fa;
-    }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 0px;
-        justify-content: flex-start;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 60px;
-        white-space: pre-wrap;
-        background-color: white;
-        border-radius: 4px 4px 0 0;
-        padding: 15px 30px;
-        min-width: 250px;
-        font-size: 20px;
-        font-weight: 400;
-        color: #666;
-        border: 1px solid #eee;
-        border-bottom: none;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #f0f2f6;
-        border-bottom: 3px solid #4e8df5;
+    
+    /* Typography Hierarchy */
+    h1 {
+        color: var(--text-black);
+        font-size: 1.75rem;
         font-weight: 700;
-        color: #333;
+        margin-bottom: 0.5rem;
+        line-height: 1.1;
     }
+    
+    h2, h3 {
+        color: var(--text-black);
+        font-weight: 600;
+        margin-bottom: 0.4rem;
+        line-height: 1.2;
+    }
+    
+    h2 {
+        font-size: 1.25rem;
+    }
+    
+    h3 {
+        font-size: 1.1rem;
+    }
+    
+    p {
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+    }
+    
+    /* Buttons - Rounded rectangles with thin borders */
+    .stButton button {
+        background-color: var(--white);
+        color: var(--text-black);
+        border: 1px solid var(--text-black);
+        border-radius: 8px;
+        padding: 0.25rem 0.75rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        min-height: 28px;
+        font-size: 0.875rem;
+    }
+    
+    .stButton button:hover {
+        background-color: var(--bg-cream);
+        border-color: var(--primary-green);
+        color: var(--primary-green);
+    }
+    
+    .stButton button:active,
+    .stButton button:focus {
+        background-color: var(--text-black);
+        color: var(--white);
+        border-color: var(--text-black);
+    }
+    
+    /* Tabs - Clean navigation with underlined active states */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0;
+        border-bottom: 1px solid var(--secondary-gray);
+        background-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background-color: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        padding: 0.4rem 1rem;
+        margin-right: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--secondary-gray);
+        transition: all 0.2s ease;
+        height: auto;
+        min-height: 32px;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        color: var(--text-black);
+        background-color: transparent;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: transparent;
+        border-bottom: 2px solid var(--primary-green);
+        color: var(--text-black);
+        font-weight: 600;
+    }
+    
+    /* Cards - Subtle borders and rounded corners */
     .stat-container {
         display: flex;
-        justify-content: space-between;
-        margin-bottom: 20px;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
     }
+    
     .stat-box {
-        background-color: white;
-        border-radius: 5px;
-        padding: 15px 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        width: 30%;
+        background-color: var(--white);
+        border: 1px solid #E5E5E5;
+        border-radius: 8px;
+        padding: 0.5rem;
+        flex: 1;
         text-align: center;
+        transition: all 0.2s ease;
     }
+    
+    .stat-box:hover {
+        border-color: var(--primary-green);
+        box-shadow: 0 2px 8px rgba(42, 98, 60, 0.1);
+    }
+    
     .stat-label {
-        font-size: 14px;
-        color: #666;
-        margin-bottom: 5px;
+        font-size: 0.75rem;
+        color: var(--secondary-gray);
+        margin-bottom: 0.1rem;
+        font-weight: 500;
+        line-height: 1.2;
     }
+    
     .stat-value {
-        font-size: 24px;
-        font-weight: bold;
-        color: #333;
-    }
-    /* Enhanced styling for AVL subtabs */
-    .stTabs [data-baseweb="tab-list"] button[data-baseweb="tab"]:hover {
-        background-color: #f8f9fa;
-        color: #495057;
-        transition: all 0.2s ease;
-    }
-    /* Active AVL subtab with underline */
-    .stTabs [data-baseweb="tab-list"] button[data-baseweb="tab"][aria-selected="true"] {
-        background-color: #ffffff;
-        border-bottom: 2px solid #28a745;
-        color: #28a745;
-        font-weight: 600;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    /* AVL subtab styling */
-    .stTabs [data-baseweb="tab-list"] button[data-baseweb="tab"] {
-        border-radius: 8px 8px 0 0;
-        margin-right: 2px;
-        min-width: 140px;
-        font-size: 14px;
-        padding: 12px 20px;
-        border: 1px solid #dee2e6;
-        border-bottom: 2px solid transparent;
-        background-color: #f8f9fa;
-        color: #6c757d;
-        transition: all 0.2s ease;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Add custom CSS to make the search bar narrower and style the refresh button
-st.markdown("""
-<style>
-    /* Make the search input narrower */
-    [data-testid="stTextInput"] {
-        max-width: 250px;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-black);
+        line-height: 1.2;
     }
     
-    /* Style the refresh button to look like the screenshot */
-    [data-testid="stButton"] button {
-        background-color: #f8f9fa;
-        color: #6c757d;
-        border: 1px solid #e0e0e0;
-        border-radius: 50%;
-        width: 28px;
-        height: 28px;
+    /* DataFrames - Clean presentation */
+    .stDataFrame {
+        background-color: var(--white);
+        border: 1px solid #E5E5E5;
+        border-radius: 8px;
         padding: 0;
-        font-size: 14px;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 0;
-        box-shadow: none;
-        white-space: nowrap;
+        overflow: hidden;
     }
     
-    /* Hover effect for refresh button */
-    [data-testid="stButton"] button:hover {
-        background-color: #f0f0f0;
-        border-color: #d0d0d0;
-        color: #495057;
+    [data-testid="stDataFrameContainer"] {
+        background-color: var(--white);
     }
     
-    /* Fix for all form submit buttons and regular buttons */
-    .stButton > button, 
-    [data-testid="stFormSubmitButton"] > button,
-    .stDownloadButton > button {
-        white-space: nowrap !important;
-        min-width: fit-content !important;
-        padding: 0.5rem 1rem !important;
-        display: inline-block !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        line-height: 1.5 !important;
-        height: auto !important;
+    /* Search Input - Compact and clean */
+    [data-testid="stTextInput"] {
+        max-width: 240px;
     }
     
-    /* Special styling for circular refresh button */
-    [data-testid="stButton"] button[title*="Download"] {
+    [data-testid="stTextInput"] input {
+        background-color: var(--white);
+        border: 1px solid #E5E5E5;
+        border-radius: 6px;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.813rem;
+        transition: all 0.2s ease;
+        height: 28px;
+    }
+    
+    [data-testid="stTextInput"] input:focus {
+        border-color: var(--primary-green);
+        box-shadow: 0 0 0 1px var(--primary-green);
+    }
+    
+    /* Reduce vertical spacing throughout */
+    .element-container {
+        margin-bottom: 0.25rem;
+    }
+    
+    .row-widget {
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Streamlit specific spacing overrides */
+    .stMarkdown {
+        margin-bottom: 0.25rem;
+    }
+    
+    div[data-testid="stVerticalBlock"] > div {
+        margin-bottom: 0.25rem;
+    }
+    
+    div[data-testid="stHorizontalBlock"] {
+        gap: 0.5rem;
+    }
+    
+    /* Tab content spacing */
+    [data-baseweb="tab-panel"] {
+        padding-top: 0.5rem;
+    }
+    
+    /* Download buttons - Special styling */
+    [data-testid="stDownloadButton"] button {
+        background-color: var(--white);
+        color: var(--primary-green);
+        border: 1px solid var(--primary-green);
+        padding: 0.25rem 0.75rem;
+        min-height: 28px;
+        font-size: 0.813rem;
+    }
+    
+    [data-testid="stDownloadButton"] button:hover {
+        background-color: var(--primary-green);
+        color: var(--white);
+    }
+    
+    /* Success/Error messages - Compact */
+    .stAlert {
+        padding: 0.4rem 0.75rem;
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    /* File uploader - Clean styling */
+    [data-testid="stFileUploader"] {
+        background-color: var(--white);
+        border: 1px solid #E5E5E5;
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    [data-testid="stFileUploader"]:hover {
+        border-color: var(--primary-green);
+    }
+    
+    /* Expander - Minimal styling */
+    [data-testid="stExpander"] {
+        background-color: var(--white);
+        border: 1px solid #E5E5E5;
+        border-radius: 6px;
+        margin-bottom: 0.25rem;
+    }
+    
+    [data-testid="stExpander"] summary {
+        padding: 0.4rem 0.75rem;
+        font-weight: 500;
+        font-size: 0.875rem;
+    }
+    
+    [data-testid="stExpander"] summary:hover {
+        color: var(--primary-green);
+    }
+    
+    /* Metric containers - Compact */
+    [data-testid="metric-container"] {
+        background-color: var(--white);
+        border: 1px solid #E5E5E5;
+        border-radius: 6px;
+        padding: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Remove default Streamlit padding */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    
+    /* Headers spacing */
+    .stMarkdown h1:first-child {
+        margin-top: 0;
+    }
+    
+    /* Dividers */
+    hr {
+        border: none;
+        border-top: 1px solid #E5E5E5;
+        margin: 0.75rem 0;
+    }
+    
+    /* Form submit buttons */
+    [data-testid="stFormSubmitButton"] > button {
+        margin-top: 0.25rem;
+    }
+    
+    /* Dataframe specific */
+    [data-testid="stDataFrame"] {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Column gaps */
+    [data-testid="column"] {
+        padding: 0 0.25rem;
+    }
+    
+    /* Widget labels */
+    .stSelectbox label,
+    .stTextInput label,
+    .stTextArea label {
+        margin-bottom: 0.25rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Reduce space after titles */
+    .appview-container h1 + div,
+    .appview-container h2 + div,
+    .appview-container h3 + div {
+        margin-top: 0.25rem;
+    }
+    
+    /* Tooltips - Dark background with white text */
+    [data-testid="stTooltipIcon"] {
+        color: var(--secondary-gray);
+    }
+    
+    div[data-baseweb="tooltip"] > div {
+        background-color: var(--text-black);
+        color: var(--white);
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Refresh button - Circular */
+    button[title*="Download"] {
         border-radius: 50%;
         width: 28px;
         height: 28px;
         padding: 0 !important;
         min-width: 28px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Sidebar - Minimal styling */
+    .stSidebar {
+        background-color: var(--bg-cream);
+        padding: 0.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
