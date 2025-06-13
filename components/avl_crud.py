@@ -181,8 +181,7 @@ def render_avl_crud_interface(category_filter=None):
         else:
             filtered_df = df
         
-        # Replace blue info box with subtle text
-        st.markdown(f"<span style='color: var(--secondary-gray); font-size: 0.8rem;'>{len(filtered_df)} of {len(df)} records</span>", unsafe_allow_html=True)
+        # Records count text has been removed for cleaner UI
         
         # Display records with selection
         if st.checkbox("Enable selection for bulk operations", key=f"enable_selection_{key_suffix}"):
@@ -198,8 +197,64 @@ def render_avl_crud_interface(category_filter=None):
             if selected_indices:
                 st.success(f"Selected {len(selected_indices)} records")
         
-        # Display the dataframe
-        st.dataframe(filtered_df, use_container_width=True)
+        # Add column selection functionality similar to CEC tabs
+        all_columns = filtered_df.columns.tolist()
+        
+        # Use consistent columns across all DCA tabs: Manufacturer, Model SKU, Date Added, Product Model Description
+        # First check if these columns exist in the dataframe
+        date_column = 'Date Added' if 'Date Added' in all_columns else None
+        description_column = 'Product Model Description' if 'Product Model Description' in all_columns else None
+        
+        # Set consistent default columns
+        default_columns = ['ID', 'Manufacturer', 'Model SKU']
+        
+        # Add date column if it exists
+        if date_column:
+            default_columns.append(date_column)
+            
+        # Add description column if it exists
+        if description_column:
+            default_columns.append(description_column)
+        
+        # Keep only columns that exist in the dataframe
+        default_columns = [col for col in default_columns if col in all_columns]
+        
+        # Add column selection
+        selected_columns = st.multiselect(
+            "Select columns to display",
+            all_columns,
+            default=default_columns,
+            key=f"columns_dca_{key_suffix}"
+        )
+        
+        # Sort the dataframe to prioritize Qcells and then by date
+        # First, create a new column to identify Qcells
+        filtered_df['is_qcells'] = filtered_df['Manufacturer'].astype(str).str.contains('Qcells', case=False, na=False)
+        
+        # Sort by is_qcells (True first) and then by date if available
+        date_col = 'Date Added' if 'Date Added' in filtered_df.columns else None
+        
+        if date_col:
+            try:
+                # Convert date column to datetime for proper sorting
+                filtered_df[date_col] = pd.to_datetime(filtered_df[date_col], errors='coerce')
+                # Sort by is_qcells first (descending to put True first), then by date (descending for newest first)
+                sorted_df = filtered_df.sort_values(by=['is_qcells', date_col], ascending=[False, False])
+            except Exception:
+                # If date conversion fails, just sort by is_qcells
+                sorted_df = filtered_df.sort_values(by=['is_qcells'], ascending=[False])
+        else:
+            # If no date column, just sort by is_qcells
+            sorted_df = filtered_df.sort_values(by=['is_qcells'], ascending=[False])
+        
+        # Remove the temporary column before displaying
+        sorted_df = sorted_df.drop(columns=['is_qcells'])
+        
+        # Display the sorted dataframe with selected columns
+        if selected_columns:
+            st.dataframe(sorted_df[selected_columns], use_container_width=True)
+        else:
+            st.dataframe(sorted_df, use_container_width=True)
         
         # Edit individual record
         st.markdown("### Edit Record")
@@ -304,7 +359,6 @@ def render_avl_crud_interface(category_filter=None):
         st.markdown("### Bulk Operations")
         
         if st.session_state[f'selected_records_{key_suffix}']:
-            st.markdown(f"<span style='color: var(--secondary-gray); font-size: 0.8rem;'>{len(st.session_state[f'selected_records_{key_suffix}'])} records selected</span>", unsafe_allow_html=True)
             
             operation = st.selectbox(
                 "Select bulk operation",

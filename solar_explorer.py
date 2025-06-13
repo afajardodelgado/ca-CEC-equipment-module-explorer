@@ -666,22 +666,49 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
     all_columns = df.columns.tolist()
     default_columns = [id_column, manufacturer_column, model_column]
     
-    # Add equipment-specific columns to defaults
+    # Determine the appropriate columns for each equipment type
+    # We want consistent columns across all tabs: Manufacturer, Model Number, Listing Date, Description
     if equipment_type == "PV Modules":
-        # Set specific default columns for PV Modules
-        default_columns = ['module_id', 'Manufacturer', 'Model Number', 'CEC Listing Date', 'Technology', 'Nameplate Pmax (W)']
+        # Set consistent columns for PV Modules
+        manufacturer_col = 'Manufacturer'
+        model_col = 'Model Number'
+        date_col = 'CEC Listing Date'
+        description_col = 'Description'
+        if description_col not in df.columns:
+            description_col = 'Technology'  # Fallback if Description doesn't exist
     elif equipment_type == "Grid Support Inverter List":
-        # Set specific default columns for Grid Support Inverter List
-        default_columns = ['inverter_id', 'Manufacturer Name', 'Model Number1', 'Grid Support Listing Date', 'Description']
+        # Set consistent columns for Grid Support Inverter List
+        manufacturer_col = 'Manufacturer Name'
+        model_col = 'Model Number1'
+        date_col = 'Grid Support Listing Date'
+        description_col = 'Description'
     elif equipment_type == "Energy Storage Systems":
-        # Set specific default columns for Energy Storage Systems
-        default_columns = ['storage_id', 'Manufacturer', 'Model Number', 'Energy Storage Listing Date', 'Chemistry', 'Description', 'PV DC Input Capability', 'Capacity (kWh)', 'Continuous Power Rating (kW)', 'Maximum Discharge Rate (kW)', 'Voltage (Vac)', 'Certifying Entity', 'Certificate Date']
+        # Set consistent columns for Energy Storage Systems
+        manufacturer_col = 'Manufacturer'
+        model_col = 'Model Number'
+        date_col = 'Energy Storage Listing Date'
+        description_col = 'Description'
     elif equipment_type == "Batteries":
-        # Set specific default columns for Batteries
-        default_columns = ['battery_id', 'Manufacturer', 'Model Number', 'Battery Listing Date', 'Chemistry', 'Description', 'Capacity (kWh)', 'Discharge Rate (kW)', 'Round Trip Efficiency (%)', 'Certifying Entity', 'Certificate Date']
+        # Set consistent columns for Batteries
+        manufacturer_col = 'Manufacturer'
+        model_col = 'Model Number'
+        date_col = 'Battery Listing Date'
+        description_col = 'Description'
     elif equipment_type == "Meters":
-        # Set specific default columns for Meters
-        default_columns = ['meter_id', 'Manufacturer', 'Model Number', 'Meter Listing Date', 'Display Type', 'PBI Meter', 'Note']
+        # Set consistent columns for Meters
+        manufacturer_col = 'Manufacturer'
+        model_col = 'Model Number'
+        date_col = 'Meter Listing Date'
+        description_col = 'Note'  # Meters often use Note instead of Description
+    else:
+        # Default columns if equipment type is not recognized
+        manufacturer_col = manufacturer_column
+        model_col = model_column
+        date_col = date_column if date_column else ''
+        description_col = 'Description'
+    
+    # Set the consistent default columns
+    default_columns = [id_column, manufacturer_col, model_col, date_col, description_col]
     
     # Keep only columns that exist in the dataframe
     default_columns = [col for col in default_columns if col in all_columns]
@@ -693,10 +720,32 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
         key=f"columns_{equipment_type}"
     )
     
-    if selected_columns:
-        st.dataframe(filtered_df[selected_columns], use_container_width=True)
+    # Sort the dataframe to prioritize Qcells and then by date
+    # First, create a new column to identify Qcells
+    filtered_df['is_qcells'] = filtered_df[manufacturer_col].astype(str).str.contains('Qcells', case=False, na=False)
+    
+    # Sort by is_qcells (True first) and then by date if available
+    if date_col and date_col in filtered_df.columns:
+        try:
+            # Convert date column to datetime for proper sorting
+            filtered_df[date_col] = pd.to_datetime(filtered_df[date_col], errors='coerce')
+            # Sort by is_qcells first (descending to put True first), then by date (descending for newest first)
+            sorted_df = filtered_df.sort_values(by=['is_qcells', date_col], ascending=[False, False])
+        except Exception:
+            # If date conversion fails, just sort by is_qcells
+            sorted_df = filtered_df.sort_values(by=['is_qcells'], ascending=[False])
     else:
-        st.dataframe(filtered_df, use_container_width=True)
+        # If no date column, just sort by is_qcells
+        sorted_df = filtered_df.sort_values(by=['is_qcells'], ascending=[False])
+    
+    # Remove the temporary column before displaying
+    sorted_df = sorted_df.drop(columns=['is_qcells'])
+    
+    # Display the sorted dataframe with selected columns
+    if selected_columns:
+        st.dataframe(sorted_df[selected_columns], use_container_width=True)
+    else:
+        st.dataframe(sorted_df, use_container_width=True)
     
     return filtered_df
 
@@ -895,7 +944,8 @@ with main_tab2:
         if df.empty:
             return df
         if "Equipment Category" in df.columns:
-            return df[df["Equipment Category"].str.contains(category, case=False, na=False)]
+            # Use exact matching instead of partial matching
+            return df[df["Equipment Category"] == category]
         return pd.DataFrame()
     
     # Function to render equipment category tab content
@@ -929,6 +979,8 @@ with main_tab2:
                     filtered_df["Manufacturer"].nunique() if "Manufacturer" in filtered_df.columns else 0,
                     last_upload_date
                 ), unsafe_allow_html=True)
+                
+                # Column selection functionality is implemented in the avl_crud.py component
                 
                 # Add separator before CRUD operations
                 st.markdown("---")
